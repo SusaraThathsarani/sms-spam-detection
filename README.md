@@ -23,3 +23,21 @@
 git clone https://github.com/SusaraThathsarani/sms-spam-detection.git
 cd sms-spam-detection
 pip install -r requirements.txt
+```
+
+### 2. Run the Full Pipeline
+Use the integration entry point to run preprocessing, training, and evaluation in one command:
+```bash
+python src/integration/run_pipeline.py
+```
+
+### 3. Run Inference on New Messages
+```bash
+python src/integration/predict.py --messages "You won a free prize" "Hi, how are you today?"
+```
+
+## 🔮 Deployment & Inference
+The trained model is saved as [models/spam_model.h5](models/spam_model.h5). The inference script loads that model and classifies new SMS messages using the saved tokenizer vocabulary from [data/processed/tokenizer.json](data/processed/tokenizer.json).
+
+## 📝 License
+This project is open-source and available under the MIT License.

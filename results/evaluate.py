@@ -9,132 +9,191 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 
 def plot_confusion_matrix(y_true, y_pred, title, filename):
     cm = confusion_matrix(y_true, y_pred)
-    plt.figure(figsize=(6, 5))
-    
-    # Custom color mapping and style
-    plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
-    plt.title(title, fontsize=14, fontweight='bold', pad=15)
-    plt.colorbar()
-    
-    tick_marks = np.arange(2)
-    plt.xticks(tick_marks, ['Ham (0)', 'Spam (1)'], fontsize=11)
-    plt.yticks(tick_marks, ['Ham (0)', 'Spam (1)'], fontsize=11)
-    
-    # Annotate matrix cells
-    thresh = cm.max() / 2.
-    for i, j in np.ndindex(cm.shape):
-        plt.text(j, i, format(cm[i, j], 'd'),
-                 horizontalalignment="center",
-                 color="white" if cm[i, j] > thresh else "black",
-                 fontsize=14, fontweight='bold')
-                 
-    plt.ylabel('True Class', fontsize=12, labelpad=10)
-    plt.xlabel('Predicted Class', fontsize=12, labelpad=10)
-    plt.tight_layout()
-    plt.savefig(filename, dpi=300)
-    plt.close()
-    print(f"Saved confusion matrix: {filename}")
+    import os
+    import json
+    import glob
+    import numpy as np
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    import tensorflow as tf
+    from sklearn.model_selection import train_test_split
+    from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
 
-def plot_training_history(history_file, title, filename):
-    if not os.path.exists(history_file):
-        print(f"Warning: History file {history_file} not found.")
-        return
-        
-    with open(history_file, 'r') as f:
-        history = json.load(f)
-    
-    epochs = range(1, len(history['accuracy']) + 1)
-    
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5))
-    
-    # Accuracy Plot
-    ax1.plot(epochs, history['accuracy'], 'o-', label='Train Accuracy', color='#1f77b4', linewidth=2)
-    ax1.plot(epochs, history['val_accuracy'], 's-', label='Val Accuracy', color='#ff7f0e', linewidth=2)
-    ax1.set_title('Training & Validation Accuracy', fontsize=12, fontweight='bold')
-    ax1.set_xlabel('Epochs', fontsize=11)
-    ax1.set_ylabel('Accuracy', fontsize=11)
-    ax1.set_xticks(epochs)
-    ax1.grid(True, linestyle='--', alpha=0.5)
-    ax1.legend(loc='lower right', fontsize=10)
-    
-    # Loss Plot
-    ax2.plot(epochs, history['loss'], 'o-', label='Train Loss', color='#d62728', linewidth=2)
-    ax2.plot(epochs, history['val_loss'], 's-', label='Val Loss', color='#2ca02c', linewidth=2)
-    ax2.set_title('Training & Validation Loss', fontsize=12, fontweight='bold')
-    ax2.set_xlabel('Epochs', fontsize=11)
-    ax2.set_ylabel('Loss', fontsize=11)
-    ax2.set_xticks(epochs)
-    ax2.grid(True, linestyle='--', alpha=0.5)
-    ax2.legend(loc='upper right', fontsize=10)
-    
-    plt.suptitle(title, fontsize=14, fontweight='bold', y=0.98)
-    plt.tight_layout()
-    plt.savefig(filename, dpi=300)
-    plt.close()
-    print(f"Saved training history plot: {filename}")
 
-def evaluate_model(model_path, X_test, y_test):
-    print(f"Loading model from {model_path}...")
-    model = tf.keras.models.load_model(model_path)
-    
-    # Run predictions
-    y_pred_prob = model.predict(X_test, verbose=0)
-    y_pred = (y_pred_prob > 0.5).astype(int).flatten()
-    
-    # Calculate metrics
-    acc = accuracy_score(y_test, y_pred)
-    prec = precision_score(y_test, y_pred)
-    rec = recall_score(y_test, y_pred)
-    f1 = f1_score(y_test, y_pred)
-    
-    return y_pred, acc, prec, rec, f1
+    def plot_confusion_matrix(y_true, y_pred, title, filename):
+        cm = confusion_matrix(y_true, y_pred)
+        plt.figure(figsize=(6, 5))
+        plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
+        plt.title(title)
+        plt.colorbar()
+        tick_marks = np.arange(2)
+        plt.xticks(tick_marks, ['Ham (0)', 'Spam (1)'])
+        plt.yticks(tick_marks, ['Ham (0)', 'Spam (1)'])
 
-def main():
-    # Load dataset
-    print("Loading test data...")
-    X = np.load("data/processed/padded.npy")
-    y = pd.read_csv("data/processed/labels.csv")["label_num"].values
+        thresh = cm.max() / 2.
+        for i, j in np.ndindex(cm.shape):
+            plt.text(j, i, format(cm[i, j], 'd'),
+                     horizontalalignment="center",
+                     color="white" if cm[i, j] > thresh else "black")
 
-    # Train-test split (80/20) with seed 42 to match training split
-    _, X_test, _, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-    print(f"Evaluation Test Set Size: {X_test.shape[0]}")
+        plt.ylabel('True label')
+        plt.xlabel('Predicted label')
+        plt.tight_layout()
+        plt.savefig(filename, dpi=300)
+        plt.close()
+        print(f"Saved confusion matrix: {filename}")
 
-    results = {}
 
-    # Evaluate Simple RNN
-    rnn_model_path = "models/simple_rnn_model.keras"
-    if os.path.exists(rnn_model_path):
-        y_pred, acc, prec, rec, f1 = evaluate_model(rnn_model_path, X_test, y_test)
-        results['Simple RNN'] = {'Accuracy': acc, 'Precision': prec, 'Recall': rec, 'F1-Score': f1}
-        plot_confusion_matrix(y_test, y_pred, "Simple RNN Confusion Matrix", "results/simple_rnn_confusion_matrix.png")
-        plot_training_history("results/simple_rnn_history.json", "Simple RNN Training History", "results/simple_rnn_training.png")
-    else:
-        print(f"Error: {rnn_model_path} not found.")
+    def plot_history(history_data, model_name, out_png):
+        # history_data should be a dict with keys: accuracy, val_accuracy, loss, val_loss
+        epochs = range(1, len(history_data.get('accuracy', [])) + 1)
+        if len(epochs) == 0:
+            print(f"No history to plot for {model_name}")
+            return
 
-    # Evaluate LSTM
-    lstm_model_path = "models/lstm_model.keras"
-    if os.path.exists(lstm_model_path):
-        y_pred, acc, prec, rec, f1 = evaluate_model(lstm_model_path, X_test, y_test)
-        results['LSTM'] = {'Accuracy': acc, 'Precision': prec, 'Recall': rec, 'F1-Score': f1}
-        plot_confusion_matrix(y_test, y_pred, "LSTM Confusion Matrix", "results/lstm_confusion_matrix.png")
-        plot_training_history("results/lstm_history.json", "LSTM Training History", "results/lstm_training.png")
-    else:
-        print(f"Error: {lstm_model_path} not found.")
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
+        ax1.plot(epochs, history_data.get('accuracy', []), 'bo-', label='Train Acc')
+        ax1.plot(epochs, history_data.get('val_accuracy', []), 'ro-', label='Val Acc')
+        ax1.set_title('Accuracy')
+        ax1.set_xlabel('Epochs')
+        ax1.set_ylabel('Accuracy')
+        ax1.legend()
 
-    # Print summary table
-    print("\n" + "="*60)
-    print("                    EVALUATION METRICS SUMMARY")
-    print("="*60)
-    print(f"{'Model':<15} | {'Accuracy':<10} | {'Precision':<10} | {'Recall':<10} | {'F1-Score':<10}")
-    print("-"*60)
-    for model_name, metrics in results.items():
-        print(f"{model_name:<15} | {metrics['Accuracy']:<10.4f} | {metrics['Precision']:<10.4f} | {metrics['Recall']:<10.4f} | {metrics['F1-Score']:<10.4f}")
-    print("="*60)
+        ax2.plot(epochs, history_data.get('loss', []), 'bo-', label='Train Loss')
+        ax2.plot(epochs, history_data.get('val_loss', []), 'ro-', label='Val Loss')
+        ax2.set_title('Loss')
+        ax2.set_xlabel('Epochs')
+        ax2.set_ylabel('Loss')
+        ax2.legend()
 
-    # Save results summary to a JSON file for report generation
-    with open("results/metrics_summary.json", "w") as f:
-        json.dump(results, f, indent=4)
-    print("Saved metrics summary to results/metrics_summary.json")
+        plt.suptitle(f"{model_name} Training History")
+        plt.tight_layout()
+        plt.savefig(out_png, dpi=300)
+        plt.close()
+        print(f"Saved training history plot: {out_png}")
 
-if __name__ == "__main__":
-    main()
+
+    def load_processed_data():
+        # Prefer CSV processed file if exists, else fallback to padded numpy + labels
+        csv_path = 'data/processed.csv'
+        if os.path.exists(csv_path):
+            df = pd.read_csv(csv_path)
+            # If the CSV contains precomputed features, it's project-specific; prefer padded.npy when available
+            # fall through to check numpy files
+
+        # Fallback to padded numpy and labels.csv
+        padded_path = 'data/processed/padded.npy'
+        labels_path = 'data/processed/labels.csv'
+        if os.path.exists(padded_path) and os.path.exists(labels_path):
+            X = np.load(padded_path)
+            labels_df = pd.read_csv(labels_path)
+            if 'label_num' in labels_df.columns:
+                y = labels_df['label_num'].values
+            elif 'label' in labels_df.columns:
+                y = labels_df['label'].map({'ham': 0, 'spam': 1}).fillna(labels_df['label']).astype(int).values
+            else:
+                # assume single column
+                y = labels_df.iloc[:, 0].values
+            return X, y
+
+        raise FileNotFoundError('Processed data not found. Expected data/processed/padded.npy and data/processed/labels.csv')
+
+
+    def evaluate_model(model_path, X_test, y_test):
+        print(f"Loading model: {model_path}")
+        model = tf.keras.models.load_model(model_path)
+        # Predict
+        y_prob = model.predict(X_test, verbose=0)
+
+        # Handle different output shapes
+        if y_prob.ndim > 1 and y_prob.shape[1] > 1:
+            # multiclass probabilities -> take argmax
+            y_pred = np.argmax(y_prob, axis=1)
+        else:
+            y_pred = (y_prob.ravel() > 0.5).astype(int)
+
+        acc = accuracy_score(y_test, y_pred)
+        prec = precision_score(y_test, y_pred, zero_division=0)
+        rec = recall_score(y_test, y_pred, zero_division=0)
+        f1 = f1_score(y_test, y_pred, zero_division=0)
+        return y_pred, {'Accuracy': acc, 'Precision': prec, 'Recall': rec, 'F1-Score': f1}
+
+
+    def find_models():
+        # Prefer official spam_model.h5
+        preferred = 'models/spam_model.h5'
+        if os.path.exists(preferred):
+            return [preferred]
+
+        # Otherwise search for any keras/h5 files in models/
+        files = []
+        for ext in ('*.h5', '*.keras'):
+            files.extend(glob.glob(os.path.join('models', ext)))
+        return files
+
+
+    def main():
+        print('Loading processed data...')
+        X, y = load_processed_data()
+        # Use 20% as test set with fixed seed to match training
+        _, X_test, _, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+        print(f'Test set size: {X_test.shape[0]}')
+
+        models = find_models()
+        if not models:
+            print('No models found in models/. Place trained model as models/spam_model.h5 or .keras/.h5 files.')
+            return
+
+        os.makedirs('results', exist_ok=True)
+        summary = {}
+
+        for mp in models:
+            name = os.path.splitext(os.path.basename(mp))[0]
+            try:
+                y_pred, metrics = evaluate_model(mp, X_test, y_test)
+                summary[name] = metrics
+
+                cm_file = f'results/{name}_confusion_matrix.png'
+                plot_confusion_matrix(y_test, y_pred, f'{name} Confusion Matrix', cm_file)
+
+                # Try to find a history JSON in results/ or models/
+                history_paths = [f'results/{name}_history.json', f'models/{name}_history.json', f'results/{name}.history.json']
+                history = None
+                for hp in history_paths:
+                    if os.path.exists(hp):
+                        with open(hp, 'r') as f:
+                            history = json.load(f)
+                        break
+                if history:
+                    hist_png = f'results/{name}_training.png'
+                    plot_history(history, name, hist_png)
+                else:
+                    print(f'No training history found for {name}, skipping history plots.')
+
+            except Exception as e:
+                print(f'Error evaluating {mp}: {e}')
+
+        # Save metrics summary
+        with open('results/metrics_summary.json', 'w') as f:
+            json.dump(summary, f, indent=4)
+        print('Saved results/metrics_summary.json')
+
+        # Write a brief report
+        with open('results/report.md', 'w') as f:
+            f.write('# Evaluation Report\n\n')
+            if not summary:
+                f.write('No model evaluations were completed.\n')
+            else:
+                f.write('## Summary Metrics\n\n')
+                f.write('| Model | Accuracy | Precision | Recall | F1-Score |\n')
+                f.write('|---|---:|---:|---:|---:|\n')
+                for m, met in summary.items():
+                    f.write(f'| {m} | {met["Accuracy"]:.4f} | {met["Precision"]:.4f} | {met["Recall"]:.4f} | {met["F1-Score"]:.4f} |\n')
+                f.write('\n')
+                f.write('Plots saved in the `results/` folder.\n')
+
+        print('Wrote results/report.md')
+
+
+    if __name__ == '__main__':
+        main()
